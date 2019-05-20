@@ -1,0 +1,43 @@
+config_filename: "default.yaml"
+description: "Default MNIST task config"
+
+project_name: "mnist"
+ex_name: "adadelta"
+
+# model specific details
+num_hidden_layers: 5
+hidden_layer_size: 64
+activation: "tanh"
+input_dim: 784
+output_dim: 10
+
+# optimization specific details
+optim_name: "ADADELTA"
+
+lr: 0.001 #def 0.001
+momentum: 0.9
+weight_decay: 0.0
+dampening:  0.0
+nesterov: False
+
+alpha: 0.99
+eps: 1.0e-6
+beta1: 0.9
+beta2: 0.999
+centered: False
+gamma: 0.9
+
+# training specific details
+num_epochs:  100
+rseed:  5
+device: "cpu" # can be cpu or cuda or cuda:0, cuda:1
+
+# saving details
+use_tflogger: True
+
+
+# data iterator specific details
+batch_size: 20
+inference_batch_size: 1000
+data_iterator_seed: 5
+use_one_hot: True

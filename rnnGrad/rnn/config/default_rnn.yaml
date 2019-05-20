@@ -1,0 +1,42 @@
+config_filename: "default_rnn.yaml"
+description: "copying memory task"
+
+project_name: "copy_mem"
+ex_name: "rmsprop_janet"
+
+# model specific details
+cell: "rnn"
+activation: "tanh"
+chrono_init: False
+t_max: 10
+hidden_size: 100
+
+
+# optimization specific details
+optim_name: "RMSprop"
+lr: 1.0e-3
+momentum: 0
+alpha: 0.99
+eps: 1.0e-8
+beta1: 0.9
+beta2: 0.999
+gamma: 0.9
+
+max_steps: 200000
+rseed:  5
+device: 'cpu'
+
+# task specific details
+task: "copying_memory"
+batch_size: 10
+seed: 5
+time_lag_min: 5
+time_lag_max: 5
+seq_len: 2
+num_noise_digits: 1
+num_digits: 8
+
+# saving details
+use_tflogger: True
+save_every_n: 10000000
+inter_saving: False
