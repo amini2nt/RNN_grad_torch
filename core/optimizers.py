@@ -402,6 +402,73 @@ class ADAM(Optimizer):
 						layer._updates[param] = - (self._lr * m_corrected / (np.sqrt(v_corrected) + self._eps))
 						layer._params[param] = layer._params[param] + layer._updates[param]
 
+class torch_ADAM(Optimizer):
+	"""Implementation of ADAM update rule"""
+
+	def __init__(self, learning_rate= 0.01, beta1 = 0.9, beta2 = 0.999, eps= 1.0e-8):
+		"""Initialize an ADAM optimizer
+
+		Args:
+			learning_rate: float, learning rate.
+			beta1: float, decay rate
+			beta2: float, decay rate
+			eps: float, term added for numerical stability.
+		"""
+		super().__init__(learning_rate)
+		self._beta1 = beta1
+		self._beta2 = beta2
+		self._eps = eps
+
+
+	def register_model(self, model):
+		"""register a model to the optimizer.
+		
+		Args:
+			model: a model object.
+		"""
+		self._model = model
+		self._params = {}
+		self._params["t"] = 0
+		self._params["m"] = {}
+		self._params["v"] = {}
+		for i in range(0, len(self._model._layer_list)):
+			layer = self._model._layer_list[i]
+			self._params["m"][i] = {}
+			self._params["v"][i] = {}
+			if len(layer._params) > 0:
+				for p in layer._params.keys():
+					self._params["v"][i][p] = torch.zeros_like(layer._params[p].shape)
+					self._params["m"][i][p] = torch.zeros_like(layer._params[p].shape)
+				
+	def update(self, time=1):
+		"""Updates the network parameters using the gradients."""
+		self._params["t"] += 1
+		for i in range(0, len(self._model._layer_list)):
+			layer = self._model._layer_list[i]
+			if len(layer._params) > 0:
+				if layer.is_recurrent():
+					for param in layer._params.keys():
+						grad = torch.zeros_like(layer._params[param].shape)
+						for t in layer._grads.keys():
+							if t <= time:
+								grad += layer._grads[t][param]
+						
+						self._params["m"][i][param] = self._beta1 * self._params["m"][i][param] + (1 - self._beta1) * (grad)					
+						self._params["v"][i][param] = self._beta2 * self._params["v"][i][param] + (1 - self._beta2) * (grad **2)
+						m_corrected = self._params["m"][i][param] / (1. - self._beta1**self._params["t"])
+						v_corrected = self._params["v"][i][param] / (1. - self._beta2**self._params["t"])		
+						layer._updates[param] = - (self._lr * m_corrected / (torch.sqrt(v_corrected) + self._eps))
+						layer._params[param] = layer._params[param] + layer._updates[param]
+				else:
+					for param in layer._params.keys():
+						grad = layer._grads[time][param]
+						self._params["m"][i][param] = self._beta1 * self._params["m"][i][param] + (1 - self._beta1) * (grad)					
+						self._params["v"][i][param] = self._beta2 * self._params["v"][i][param] + (1 - self._beta2) * (grad **2)
+						m_corrected = self._params["m"][i][param] / (1. - self._beta1**self._params["t"])
+						v_corrected = self._params["v"][i][param] / (1. - self._beta2**self._params["t"])		
+						layer._updates[param] = - (self._lr * m_corrected / (torch.sqrt(v_corrected) + self._eps))
+						layer._params[param] = layer._params[param] + layer._updates[param]
+
 
 
 class WA_ADAM(Optimizer):
