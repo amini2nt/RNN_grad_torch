@@ -53,6 +53,7 @@ class torch_linear(Layer):
 		#delta = delta / (np.linalg.norm(delta, axis=0)+1e-8)
 
 		self._grads[time] = {}
+
 		self._grads[time]['W'] = torch.t(torch.matmul(delta, self._input[time]))
 		if self._bias:
 			self._grads[time]['b'] = torch.sum(torch.t(delta), dim=0)
@@ -398,7 +399,7 @@ class torch_JANETCELL(Layer):
 		"""
 
 		self._h = {}
-		self._h[0] = torch.zeros(size=(batch_size, self._output_dim))
+		self._h[0] = torch.zeros(size=(batch_size, self._output_dim)).cuda()
 
 	def forward(self, input, time=1):
 		"""forward prop through the RNN layer.

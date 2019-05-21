@@ -1,18 +1,20 @@
 config_filename: "default_rnn.yaml"
 description: "copying memory task"
 
-project_name: "wa_copy"
-ex_name: "wa_adam_5"
+project_name: "pmnist_wa"
+ex_name: "rmsprop_janet"
 
 # model specific details
 
 hidden_size: 100
+input_size: 1
+output_size: 10
 
 
 # optimization specific details
 
 # Valid optimizer names: Adadelta, Adagrad, Adam, RMSprop, TA_RMSprop, SGD
-optim_name: "RMSprop"
+optim_name: "torch_RMSprop"
 lr: 1.0e-2
 momentum: 0
 alpha: 0.99
@@ -24,12 +26,13 @@ beta1: 0.9
 beta2: 0.999
 gamma: 0.9
 
-max_steps: 200
+max_steps: 200000
 rseed:  5
+device: 'cuda'
 
 # task specific details
-task: "copying_memory"
-batch_size: 500
+task: "pmnist"
+batch_size: 100
 seed: 5
 time_lag_min: 5
 time_lag_max: 5

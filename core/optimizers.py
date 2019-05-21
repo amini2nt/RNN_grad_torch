@@ -133,7 +133,7 @@ class torch_RMSprop(Optimizer):
 			self._params["g2"][i] = {}
 			if len(layer._params) > 0:
 				for p in layer._params.keys():
-					self._params["g2"][i][p] = torch.zeros(layer._params[p].shape)
+					self._params["g2"][i][p] = torch.zeros_like(layer._params[p])
 
 	def update(self, time=1):
 		"""Updates the network parameters using the gradients.
@@ -146,7 +146,7 @@ class torch_RMSprop(Optimizer):
 			if len(layer._params) > 0:
 				if layer.is_recurrent():
 					for param in layer._params.keys():
-						grad = torch.zeros(layer._params[param].shape)
+						grad = torch.zeros_like(layer._params[param])
 						for t in layer._grads.keys():
 							if t <= time:
 								grad += layer._grads[t][param] 

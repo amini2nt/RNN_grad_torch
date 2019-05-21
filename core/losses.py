@@ -351,7 +351,7 @@ class torch_ce_with_logits_loss(object):
 		ones_for_answers = torch.zeros_like(self._pred[time])
 		ones_for_answers[torch.arange(len(self._pred[time])), self._target[time]] = 1
 		softmax = torch.exp(self._pred[time])/ torch.exp(self._pred[time]).sum(dim=1, keepdim=True)
-		self._grad[time] = (-ones_for_answers + softmax)
+		self._grad[time] = torch.t(-ones_for_answers + softmax)
 		if self._average == 'mean':
 			self._grad[time] /= self._pred[time].shape[0]
 		return self._grad[time]

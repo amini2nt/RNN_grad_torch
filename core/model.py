@@ -179,3 +179,11 @@ class Model(object):
 					total += layer._params[p].numel()
 		return total
 
+	def cuda(self):
+
+		for layer in self._layer_list:
+			if len(layer._params) > 0:
+				for p in layer._params:
+					layer._params[p] = layer._params[p].cuda()
+
+

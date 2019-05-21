@@ -19,7 +19,7 @@ class Recurrent(Model):
 
 	def _create_network(self):
 
-		self.append(RNNCell(self._input_size, self._hidden_size, "sigmoid"))
-		self.append(linear(self._hidden_size, self._output_size))
+		self.append(torch_JANETCELL(self._input_size, self._hidden_size))
+		self.append(torch_linear(self._hidden_size, self._output_size))
 
-		self.add_loss(bce_with_logits_loss(average='mean'))
+		self.add_loss(torch_ce_with_logits_loss(average='mean'))
