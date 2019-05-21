@@ -23,8 +23,9 @@ class Recurrent(Model):
 
 	def _create_network(self):
 
-		self.append(torch_JANETCELL(self._input_size, self._hidden_size,
-			self._chrono_init, self._t_max, self._device))
+		#self.append(torch_JANETCELL(self._input_size, self._hidden_size,
+		#	self._chrono_init, self._t_max, self._device))
+		self.append(torch_RNNCell(self._input_size, self._hidden_size, "torch_tanh", self._device))
 		self.append(torch_linear(self._hidden_size, self._output_size))
 
 		self.add_loss(torch_ce_with_logits_loss(average='mean'))

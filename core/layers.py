@@ -178,7 +178,7 @@ class torch_RNNCell(Layer):
 		self._h = {}
 		self._h[0] = torch.zeros(size=(batch_size, self._output_dim))
 		if self._device is not None:
-			self._h[0].to(self._device)
+			self._h[0] = self._h[0].to(self._device)
 
 	def forward(self, input, time=1):
 		"""forward prop through the RNN layer.
@@ -404,7 +404,7 @@ class torch_JANETCELL(Layer):
 		self._h = {}
 		self._h[0] = torch.zeros(size=(batch_size, self._output_dim))
 		if self._device is not None:
-			self._h[0].to(self._device)
+			self._h[0] = self._h[0].to(self._device)
 
 	def forward(self, input, time=1):
 		"""forward prop through the RNN layer.
