@@ -1,6 +1,7 @@
 import numpy
 import argparse
 import logging
+import time
 
 import torch
 
@@ -15,7 +16,7 @@ from myTorch.utils.logger import Logger
 from myTorch.utils import MyContainer, create_config
 
 parser = argparse.ArgumentParser(description="Algorithm Learning Task")
-parser.add_argument("--config", type=str, default="config/default_rnn.yaml", help="config file path.")
+parser.add_argument("--config", type=str, default="config/default_ssmnist.yaml", help="config file path.")
 parser.add_argument("--force_restart", type=bool, default=False, help="if True start training from scratch.")
 
 
@@ -46,16 +47,18 @@ def evaluate(experiment, model, config, data_iterator, tr, logger, device, tag):
         model.reset()
         model.reset_hidden(batch_size=config.batch_size)
 
+        data['x'] = torch.from_numpy(numpy.asarray(data['x'])).to(device)
+        data['y'] = torch.from_numpy(numpy.asarray(data['y'])).to(device)
+        data['mask'] = torch.from_numpy(numpy.asarray(data['mask'])).to(device)
+
         for i in range(0, data["datalen"]):
 
-            x = torch.from_numpy(numpy.asarray(data['x'][i])).to(device)
-            y = torch.from_numpy(numpy.asarray(data['y'][i])).to(device)
-            mask = torch.from_numpy(numpy.asarray(data['mask'][i])).to(device)
+            x = data['x'][i]
+            y = data['y'][i]
+            mask = data['mask'][i]
 
             output = model.forward(x, i+1)
             if mask[0] == 1:
-
-
                 values, indices = torch.max(output, 1)
                 correct += (indices == y).to(device, dtype=torch.float32).sum().item()
                 num_examples += data['x'].shape[1]
@@ -80,6 +83,8 @@ def train(experiment, model, config, data_iterator, tr, logger, device):
         logger: logger object.
     """
 
+    init_time = time.time()
+
     for step in range(tr.updates_done, config.max_steps):
 
 
@@ -98,11 +103,15 @@ def train(experiment, model, config, data_iterator, tr, logger, device):
         model.reset_hidden(batch_size=config.batch_size)
         model.reset()
 
+        data['x'] = torch.from_numpy(numpy.asarray(data['x'])).to(device)
+        data['y'] = torch.from_numpy(numpy.asarray(data['y'])).to(device)
+        data['mask'] = torch.from_numpy(numpy.asarray(data['mask'])).to(device)
+
         for i in range(0, data["datalen"]):
 
-            x = torch.from_numpy(numpy.asarray(data['x'][i])).to(device)
-            y = torch.from_numpy(numpy.asarray(data['y'][i])).to(device)
-            mask = torch.from_numpy(numpy.asarray(data['mask'][i])).to(device)
+            x = data['x'][i]
+            y = data['y'][i]
+            mask = data['mask'][i]
 
             model.optimizer.zero_grad()
 
@@ -115,7 +124,7 @@ def train(experiment, model, config, data_iterator, tr, logger, device):
                 model.backward(i+1)
                 model.optimizer.update(i+1)
 
-        seqloss /= float(data["mask"].shape[1])
+
         tr.ce["train"].append(seqloss.item())
         running_average = sum(tr.ce["train"]) / len(tr.ce["train"])
 
@@ -131,6 +140,7 @@ def train(experiment, model, config, data_iterator, tr, logger, device):
 
         if tr.updates_done % config.save_every_n == 0:
             experiment.save()
+    print(time.time() - init_time)
 
 
 def create_experiment(config):
@@ -146,7 +156,7 @@ def create_experiment(config):
 
     torch.manual_seed(config.rseed)
 
-    model = Recurrent(config.input_size, config.output_size, config.hidden_size)
+    model = Recurrent(config.input_size, config.output_size, config.hidden_size, device=device)
     if config.device != "cpu":
         model.cuda()
 

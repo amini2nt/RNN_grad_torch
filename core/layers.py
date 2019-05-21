@@ -6,9 +6,6 @@ import torch
 
 
 
-
-
-
 class torch_linear(Layer):
 	def __init__(self, input_dim, output_dim, bias=True):	
 		super().__init__()
@@ -148,7 +145,7 @@ class linear(Layer):
 class torch_RNNCell(Layer):
 	"""Implementation of a Vanilla RNN Cell."""
 
-	def __init__(self, input_dim, output_dim, activation="torch_tanh"):
+	def __init__(self, input_dim, output_dim, activation="torch_tanh", device=None):
 		"""Initializes the RNN Cell
 
 		Args:
@@ -162,6 +159,7 @@ class torch_RNNCell(Layer):
 		self._input_dim = input_dim
 		self._output_dim = output_dim
 		self._activation = get_activation(activation)
+		self._device = device
 
 		self._params['W'] = init.xavier_uniform(size=(input_dim, output_dim))
 		self._params['U'] = init.xavier_uniform(size=(output_dim, output_dim))
@@ -179,6 +177,8 @@ class torch_RNNCell(Layer):
 
 		self._h = {}
 		self._h[0] = torch.zeros(size=(batch_size, self._output_dim))
+		if self._device is not None:
+			self._h[0].to(self._device)
 
 	def forward(self, input, time=1):
 		"""forward prop through the RNN layer.
@@ -362,7 +362,7 @@ class RNNCell(Layer):
 class torch_JANETCELL(Layer):
 	"""Implementation of a JANET Cell."""
 
-	def __init__(self, input_dim, output_dim):
+	def __init__(self, input_dim, output_dim, chrono_init=False, t_max=10, device=None):
 		"""Initializes the JANET Cell
 		Args:
 			input_dim: int, input dimension.
@@ -376,13 +376,16 @@ class torch_JANETCELL(Layer):
 		self._right_grads['h'] = {}
 		self._input_dim = input_dim
 		self._output_dim = output_dim
+		self._chrono_init = chrono_init
+		self._t_max = t_max
+		self._device = device
 
-		self._params['W_x2f'] = init.xavier_uniform(size=(input_dim, output_dim))
-		self._params['W_h2f'] = init.xavier_uniform(size=(output_dim, output_dim))
+		self._params['W_x2f'] = init.xavier_normal(size=(input_dim, output_dim))
+		self._params['W_h2f'] = init.orthogonal(size=(output_dim, output_dim))
 		self._params['b_f'] = init.constant(size=output_dim, value=1.0)
 
-		self._params['W_x2c'] = init.xavier_uniform(size=(input_dim, output_dim))
-		self._params['W_h2c'] = init.xavier_uniform(size=(output_dim, output_dim))
+		self._params['W_x2c'] = init.xavier_normal(size=(input_dim, output_dim))
+		self._params['W_h2c'] = init.orthogonal(size=(output_dim, output_dim))
 		self._params['b_c'] = init.constant(size=output_dim, value=0.0)
 
 		self._activation = {}
@@ -399,7 +402,9 @@ class torch_JANETCELL(Layer):
 		"""
 
 		self._h = {}
-		self._h[0] = torch.zeros(size=(batch_size, self._output_dim)).cuda()
+		self._h[0] = torch.zeros(size=(batch_size, self._output_dim))
+		if self._device is not None:
+			self._h[0].to(self._device)
 
 	def forward(self, input, time=1):
 		"""forward prop through the RNN layer.

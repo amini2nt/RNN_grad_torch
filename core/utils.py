@@ -14,6 +14,9 @@ def get_optimizer(config):
 		return torch_RMSprop(learning_rate=config.lr, alpha=config.alpha, eps=config.eps)
 	elif config.optim_name == "WA_RMSprop":
 		return WA_RMSprop(learning_rate=config.lr, alpha=config.alpha, eps=config.eps)	
+	elif config.optim_name == "torch_WA_RMSprop":
+		return torch_WA_RMSprop(learning_rate=config.lr, alpha=config.alpha, eps=config.eps)	
+
 	elif config.optim_name == "ADAM":
 		return ADAM(learning_rate=config.lr, beta1 = config.beta1, beta2 = config.beta2, eps=config.eps)
 	elif config.optim_name == "WA_ADAM":
