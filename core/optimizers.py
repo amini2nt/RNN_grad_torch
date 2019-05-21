@@ -629,6 +629,57 @@ class WA_ADAM(Optimizer):
 						layer._params[param] = layer._params[param] + layer._updates[param]
 
 
+class torch_ADAGRAD(Optimizer):
+	"""Implementation of ADAGRAD update rule"""
+
+	def __init__(self, learning_rate=0.01, eps=1.0e-8):
+		"""Initialize an ADAGRAD optimizer
+
+		Args:
+			learning_rate: float, learning rate.
+			eps: float, term added for numerical stability.
+		"""
+		super().__init__(learning_rate)
+		
+		self._eps = eps
+
+	def register_model(self, model):
+		"""register a model to the optimizer.
+		
+		Args:
+			model: a model object.
+		"""	
+		self._model = model
+		self._params = {}
+		self._params["sqrs"] = {}
+		for i in range(0, len(self._model._layer_list)):
+			layer = self._model._layer_list[i]
+			self._params["sqrs"][i] = {}
+			if len(layer._params) > 0:
+				for p in layer._params.keys():
+					self._params["sqrs"][i][p] = torch.zeros_like(layer._params[p])
+
+	def update(self, time=1):
+		"""Updates the network parameters using the gradients."""
+		for i in range(0, len(self._model._layer_list)):
+			layer = self._model._layer_list[i]
+			if len(layer._params) > 0:
+				if layer.is_recurrent():
+					for param in layer._params.keys():
+						grad = torch.zeros_like(layer._params[param])
+						for t in layer._grads.keys():
+							if t <= time:
+								grad += layer._grads[t][param] 
+						self._params["sqrs"][i][param] += ( grad ** 2) 
+						layer._updates[param] = -(self._lr * grad / (torch.sqrt(self._params["sqrs"][i][param] ) + self._eps ))
+						layer._params[param] = layer._params[param] + layer._updates[param]
+					
+				else:
+					for param in layer._params.keys():
+						grad = layer._grads[time][param]
+						self._params["sqrs"][i][param] += ( grad ** 2) 
+						layer._updates[param] = -(self._lr * grad / (torch.sqrt(self._params["sqrs"][i][param]) + self._eps))
+						layer._params[param] = layer._params[param] + layer._updates[param]		
 
 class ADAGRAD(Optimizer):
 	"""Implementation of ADAGRAD update rule"""
