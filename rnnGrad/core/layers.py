@@ -1,7 +1,7 @@
 import numpy as np
-from core import init
-from core.activations import *
-from core.model import Layer
+from rnnGrad.core import init
+from rnnGrad.core.activations import *
+from rnnGrad.core.model import Layer
 import torch
 
 

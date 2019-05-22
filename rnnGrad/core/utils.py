@@ -1,4 +1,4 @@
-from core.optimizers import *
+from rnnGrad.core.optimizers import *
 
 def get_optimizer(config):
 	"""Returns an optimizer object.

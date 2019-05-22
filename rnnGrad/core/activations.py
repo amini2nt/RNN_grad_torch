@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.special import expit
-from core.model import Layer
+from rnnGrad.core.model import Layer
 import torch
 
 class torch_sigmoid(Layer):
