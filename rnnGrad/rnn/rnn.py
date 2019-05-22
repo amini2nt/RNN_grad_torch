@@ -1,10 +1,10 @@
 import numpy as np
 
-from core.activations import *
-from core.losses import *
-from core.layers import *
-from core.model import *
-from core.optimizers import *
+from rnnGrad.core.activations import *
+from rnnGrad.core.losses import *
+from rnnGrad.core.layers import *
+from rnnGrad.core.model import *
+from rnnGrad.core.optimizers import *
 
 class Recurrent(Model):
 

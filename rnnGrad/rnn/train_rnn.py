@@ -4,8 +4,8 @@ import argparse
 import logging
 import ipdb
 import time
-from core.optimizers import *
-from core.utils import get_optimizer
+from rnnGrad.core.optimizers import *
+from rnnGrad.core.utils import get_optimizer
 import torch
 from myTorch import Experiment
 from rnn import Recurrent
