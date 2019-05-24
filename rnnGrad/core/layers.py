@@ -5,9 +5,17 @@ from rnnGrad.core.model import Layer
 import torch
 
 
+class linear(Layer):
+	"""Implementation of a linear layer."""
 
-class torch_linear(Layer):
-	def __init__(self, input_dim, output_dim, bias=True):	
+	def __init__(self, input_dim, output_dim, bias=True):
+		"""Initializes a linear layer.
+
+		Args:
+			input_dim: int, input dimension.
+			output_dim: int, output dimension.
+			bias: bool, True to add bias, False otherwise
+		"""	
 		super().__init__()
 		self._input_dim = input_dim
 		self._output_dim = output_dim
@@ -22,11 +30,11 @@ class torch_linear(Layer):
 		"""forward prop through the linear layer.
 		
 		Args:
-			input: numpy array of size (batch_size, input_dim)
+			input: torch array of size (batch_size, input_dim)
 			time: int, time step
 
 		returns:
-			output: numpy array of size (batch_size, output_dim)
+			output: torch array of size (batch_size, output_dim)
 		"""
 		self._input[time] = input
 		self._output[time] = torch.matmul(input, self._params['W'])
@@ -38,101 +46,22 @@ class torch_linear(Layer):
 		"""backprop through the linear layer
 
 		Args:
-			in_grad: numpy array, gradient from the upper layer.
+			in_grad: torch array, gradient from the upper layer.
 			time: int, time step
 
 		returns:
-			numpy array, outgoing gradient.
+			torch array, outgoing gradient.
 		"""
 		delta = in_grad
-
-		# This line is to try normalizing the in_grad
-		#delta = delta / (np.linalg.norm(delta, axis=0)+1e-8)
 
 		self._grads[time] = {}
 
 		self._grads[time]['W'] = torch.t(torch.matmul(delta, self._input[time]))
 		if self._bias:
 			self._grads[time]['b'] = torch.sum(torch.t(delta), dim=0)
-		delta = torch.matmul(self._params['W'], delta)	
+		out_grad = torch.matmul(self._params['W'], delta)	
 		
-		# This line normalizes the out_grad
-		#ns = max(np.linalg.norm(delta, axis=0)+1e-8)
-		#delta = delta / ns
-
-		return delta
-
-	def reset_computation(self):
-		"""resets the layer computations."""
-		self._input = {}
-		self._output = {}
-		self._grads = {}
-		self._updates = {}
-
-
-class linear(Layer):
-	"""Implementation of a linear layer."""
-
-	def __init__(self, input_dim, output_dim, bias=True):
-		"""Initializes a linear layer.
-
-		Args:
-			input_dim: int, input dimension.
-			output_dim: int, output dimension.
-			bias: bool, True to add bias, False otherwise
-		"""
-		super().__init__()
-		self._input_dim = input_dim
-		self._output_dim = output_dim
-		self._bias = bias
-		self._params['W'] = init.xavier_uniform(size=(input_dim, output_dim)).numpy().astype("float32")
-		if self._bias: 
-			self._params['b'] = init.normal(size=output_dim).numpy().astype("float32")
-		self._input = {}
-		self._output = {}
-
-	def forward(self, input, time=1):
-		"""forward prop through the linear layer.
-		
-		Args:
-			input: numpy array of size (batch_size, input_dim)
-			time: int, time step
-
-		returns:
-			output: numpy array of size (batch_size, output_dim)
-		"""
-		self._input[time] = input
-		self._output[time] = np.matmul(input, self._params['W'])
-		if self._bias:
-			self._output[time] += self._params['b']
-		return self._output[time]
-
-	def backward(self, in_grad, time=1):
-		"""backprop through the linear layer
-
-		Args:
-			in_grad: numpy array, gradient from the upper layer.
-			time: int, time step
-
-		returns:
-			numpy array, outgoing gradient.
-		"""
-		delta = in_grad
-
-		# This line is to try normalizing the in_grad
-		#delta = delta / (np.linalg.norm(delta, axis=0)+1e-8)
-
-		self._grads[time] = {}
-		self._grads[time]['W'] = np.matmul(delta, self._input[time]).T
-		if self._bias:
-			self._grads[time]['b'] = np.sum(delta.T, axis=0)
-		delta = np.matmul(self._params['W'], delta)	
-		
-		# This line normalizes the out_grad
-		#ns = max(np.linalg.norm(delta, axis=0)+1e-8)
-		#delta = delta / ns
-
-		return delta
+		return out_grad
 
 	def reset_computation(self):
 		"""resets the layer computations."""

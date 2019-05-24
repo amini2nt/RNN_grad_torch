@@ -1,4 +1,3 @@
-import numpy as np
 import pickle
 import os
 import torch
@@ -13,12 +12,13 @@ class Layer(object):
 		self._grads = {}
 		self._updates = {}
 		self._is_recurrent = False
+		self._time_shared = False
 
 	def forward(self, input, time=1):
 		"""forward prop through the layer.
 		
 		Args:
-			input: numpy array of size (batch_size, input_dim)
+			input: torch array of size (batch_size, input_dim)
 			time: int, time step
 		"""
 		raise Exception("Not Implemented!")
@@ -27,7 +27,7 @@ class Layer(object):
 		"""backward prop through the layer.
 
 		Args:
-			in_grad: numpy array, incoming gradient.
+			in_grad: torch array, incoming gradient.
 			time: int, time step
 		"""
 		raise Exception("Not Implemented!")
@@ -39,6 +39,10 @@ class Layer(object):
 	def is_recurrent(self):
 		"""Returns true if the layer is recurrent."""
 		return self._is_recurrent
+
+	def is_time_shared(self):
+		"""Returns true is the layer is shared across time steps."""
+		return self._time_shared
 
 
 class Model(object):
@@ -54,9 +58,9 @@ class Model(object):
 		Args:
 			layer: a layer object.
 		"""
-		if layer.is_recurrent():
+		if layer.is_time_shared():
 			for layer in self._layer_list:
-				layer._is_recurrent = True
+				layer._time_shared = True
 		self._layer_list.append(layer)
 
 	def add_loss(self, loss):
@@ -86,11 +90,11 @@ class Model(object):
 		"""Forward prop through the network.
 		
 		Args:
-			input: numpy array, input to the network
+			input: torch array, input to the network
 			time: int, time step
 
 		returns:
-			numpy array, output of the network
+			torch array, output of the network
 		"""
 		x = input
 		for i in range(len(self._layer_list)):
@@ -100,8 +104,8 @@ class Model(object):
 	def compute_loss(self, pred, target, time=1):
 		"""Computes the loss.
 		Args:
-			pred: numpy array, model's prediction.
-			target:	numpy array, target value.
+			pred: torch array, model's prediction.
+			target:	torch array, target value.
 			time: int, time step
 
 		returns:
@@ -185,5 +189,3 @@ class Model(object):
 			if len(layer._params) > 0:
 				for p in layer._params:
 					layer._params[p] = layer._params[p].cuda()
-
-
