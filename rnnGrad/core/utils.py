@@ -8,10 +8,11 @@ def get_optimizer(config):
 	"""
 	if config.optim_name == "SGD":
 		return SGD(learning_rate=config.lr, momentum=config.momentum)
+	elif config.optim_name == "ADAGRAD":
+		return ADAGRAD(learning_rate=config.lr, eps=config.eps)
 	elif config.optim_name == "RMSprop":
 		return RMSprop(learning_rate=config.lr, alpha=config.alpha, eps=config.eps)
-	elif config.optim_name == "torch_RMSprop":
-		return torch_RMSprop(learning_rate=config.lr, alpha=config.alpha, eps=config.eps)
+
 	elif config.optim_name == "WA_RMSprop":
 		return WA_RMSprop(learning_rate=config.lr, alpha=config.alpha, eps=config.eps)	
 	elif config.optim_name == "torch_WA_RMSprop":
@@ -32,10 +33,6 @@ def get_optimizer(config):
 		return WA_ADADELTA(learning_rate=config.lr, gamma=config.gamma, eps=config.eps)	
 	elif config.optim_name == "torch_WA_ADADELTA":
 		return torch_WA_ADADELTA(learning_rate=config.lr, gamma=config.gamma, eps=config.eps)			
-	elif config.optim_name == "ADAGRAD":
-		return ADAGRAD(learning_rate=config.lr, eps=config.eps)
-	elif config.optim_name == "torch_ADAGRAD":
-		return torch_ADAGRAD(learning_rate=config.lr, eps=config.eps)
 	elif config.optim_name == "WA_ADAGRAD":
 		return WA_ADAGRAD(learning_rate=config.lr, eps=config.eps)
 	elif config.optim_name == "torch_WA_ADAGRAD":

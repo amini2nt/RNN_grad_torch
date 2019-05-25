@@ -100,3 +100,33 @@ class TestOptimizers(unittest.TestCase):
 		torch_optimizer = optim.SGD(torch_model.parameters(), lr=0.1, momentum=0.9)
 
 		self._test_optimizer(my_model, torch_model, my_optimizer, torch_optimizer)
+
+	def test_ADAGRAD(self):
+
+		my_model = MLP()
+		my_optimizer = ADAGRAD(learning_rate=0.01, eps=1.0e-10)
+		my_optimizer.register_model(my_model)
+		my_model.register_optimizer(my_optimizer)
+
+		torch_model = torch_MLP()
+		torch_optimizer = optim.Adagrad(torch_model.parameters(), lr=0.01)
+
+		self._test_optimizer(my_model, torch_model, my_optimizer, torch_optimizer)
+
+	def test_RMSprop(self):
+
+		my_model = MLP()
+		my_optimizer = RMSprop(learning_rate=0.01, alpha=0.99, eps=1.0e-8)
+		my_optimizer.register_model(my_model)
+		my_model.register_optimizer(my_optimizer)
+
+		torch_model = torch_MLP()
+		torch_optimizer = optim.RMSprop(torch_model.parameters(), lr=0.01, alpha=0.99, eps=1.0e-8)
+
+		self._test_optimizer(my_model, torch_model, my_optimizer, torch_optimizer)
+
+
+
+
+
+
