@@ -49,7 +49,6 @@ class SGD(Optimizer):
 			learning_rate: float, learning rate.
 		"""
 		super().__init__(learning_rate)
-		print(momentum)
 		self._momentum = momentum
 
 	def register_model(self, model):
@@ -67,8 +66,7 @@ class SGD(Optimizer):
 				self._params["v"][i] = {}
 				if len(layer._params) > 0:
 					for p in layer._params.keys():
-						self._params["v"][i][p] = np.zeros(shape=layer._params[p].shape).astype("float32")
-
+						self._params["v"][i][p] = torch.zeros_like(layer._params[p])
 
 	def update(self, time=1):
 		"""Updates the network parameters using the gradients.
@@ -80,9 +78,9 @@ class SGD(Optimizer):
 		for i in range(0, len(self._model._layer_list)):
 			layer = self._model._layer_list[i]
 			if len(layer._params) > 0:
-				if layer.is_recurrent():
+				if layer.is_time_shared():
 					for param in layer._params.keys():
-						grad = np.zeros(shape=layer._params[param].shape).astype("float32")
+						grad = torch.zeros_like(layer._params[param])
 						for t in layer._grads.keys():
 							if t <= time:
 								grad += layer._grads[t][param] 
