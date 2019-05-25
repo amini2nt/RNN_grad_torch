@@ -1,4 +1,3 @@
-import numpy as np
 from rnnGrad.core import init
 from rnnGrad.core.activations import *
 from rnnGrad.core.model import Layer
