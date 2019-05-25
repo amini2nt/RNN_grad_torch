@@ -13,6 +13,7 @@ class Layer(object):
 		self._updates = {}
 		self._is_recurrent = False
 		self._time_shared = False
+		self._device = torch.device('cpu')
 
 	def forward(self, input, time=1):
 		"""forward prop through the layer.
@@ -183,9 +184,14 @@ class Model(object):
 					total += layer._params[p].numel()
 		return total
 
-	def cuda(self):
-
+	def to(self, device):
+		"""Moves all the parameters to the specified device.
+		
+		Args:
+			device: torch device.
+		"""
 		for layer in self._layer_list:
+			layer._device = device
 			if len(layer._params) > 0:
 				for p in layer._params:
-					layer._params[p] = layer._params[p].cuda()
+					layer._params[p] = layer._params[p].to(device)
