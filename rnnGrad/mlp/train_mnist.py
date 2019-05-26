@@ -2,12 +2,12 @@ import argparse
 import logging
 import time
 import numpy as np
-
-from core.optimizers import *
+import torch
 
 
 from myTorch.utils import MyContainer, create_config
-from core.utils import get_optimizer
+from rnnGrad.core.utils import get_optimizer
+from rnnGrad.core.losses import *
 from myTorch import Logger
 from myTorch import Experiment
 from MLP import MLP
@@ -16,12 +16,11 @@ from myTorch.task.mnist import MNISTData
 parser = argparse.ArgumentParser(description="MNIST Classification Task")
 parser.add_argument("--config", type=str, default="config/default.yaml", help="config file path.")
 parser.add_argument("--force_restart", type=bool, default=False, help="if True start training from scratch.")
-parser.add_argument("--device", type=str, default="cuda")
 parser.add_argument('--config_params', type=str, default="default", help="config params to change")
 
 
 
-def compute_accuracy(model, data_iterator, data_tag):
+def compute_accuracy(model, data_iterator, data_tag, device):
     """Computes accuracy for the given data split.
 
     Args:
@@ -41,18 +40,19 @@ def compute_accuracy(model, data_iterator, data_tag):
         data = data_iterator.next(data_tag)
         if data is None:
             break
-        x = data['x'].astype("float32")
-        y = data['y'].astype("float32")
+        x = torch.from_numpy(data['x']).to(device)
+        y = torch.from_numpy(data['y']).to(device)
+        model.reset()
         output = model.forward(x)
-        pred = np.argmax(output, 1)
-        target = np.argmax(y, 1)
-        accuracy += (pred==target).sum()
+        _, pred = torch.max(output, 1)
+        _, target = torch.max(y, 1)
+        accuracy += (pred==target).sum().item()
         total += len(pred)
 
     accuracy /= total
     return accuracy
 
-def train(experiment, model, config, data_iterator, tr, logger):
+def train(experiment, model, config, data_iterator, tr, logger, device):
     """Training loop.
     Args:
         experiment: experiment object.
@@ -61,6 +61,7 @@ def train(experiment, model, config, data_iterator, tr, logger):
         data_iterator: data iterator object
         tr: training statistics dictionary.
         logger: logger object.
+        device: torch device.
     """
 
     for i in range(tr.epochs_done, config.num_epochs):
@@ -74,8 +75,8 @@ def train(experiment, model, config, data_iterator, tr, logger):
             if data is None:
                 break
 
-            x = data['x'].astype("float32")
-            y = data['y'].astype("float32")
+            x = torch.from_numpy(data['x'].astype("float32")).to(device)
+            y = torch.from_numpy(data['y'].astype("float32")).to(device)
 
             model.reset()
             model.optimizer.zero_grad()
@@ -86,7 +87,7 @@ def train(experiment, model, config, data_iterator, tr, logger):
             model.optimizer.update()
 
             tr.updates_done += 1
-            layer1_grad = np.linalg.norm(model._layer_list[0]._updates['W'])
+            layer1_grad = model._layer_list[0]._updates['W'].norm()
             layer1_grad_rel = layer1_grad/loss
             tr.layer1_grad.append(layer1_grad)
             tr.layer1_grad_rel.append(layer1_grad_rel)
@@ -98,8 +99,8 @@ def train(experiment, model, config, data_iterator, tr, logger):
         logger.log_scalar("training loss per epoch", avg_loss, i + 1)
         logging.info("training loss in epoch {}: {}".format(i + 1, avg_loss))
 
-        val_acc = compute_accuracy(model, data_iterator, "valid")
-        test_acc = compute_accuracy(model, data_iterator, "test")
+        val_acc = compute_accuracy(model, data_iterator, "valid", device)
+        test_acc = compute_accuracy(model, data_iterator, "test", device)
         tr.valid_acc.append(val_acc)
         tr.test_acc.append(test_acc)
         logger.log_scalar("valid acc per epoch", val_acc, i + 1)
@@ -113,8 +114,6 @@ def train(experiment, model, config, data_iterator, tr, logger):
         logging.info("iteration took {} seconds.".format(time.time()-start_time))
 
         
-
-
 def create_experiment(config):
     """Creates the experiment.
 
@@ -124,6 +123,8 @@ def create_experiment(config):
     returns:
         experiment, model, data_iterator, training_statitics, logger, device
     """
+    device = torch.device(config.device)
+    logging.info("using {}".format(config.device))
 
     experiment = Experiment(config.name, config.save_dir)
 
@@ -132,18 +133,19 @@ def create_experiment(config):
         logger = Logger(config.tflog_dir)
 
     np.random.seed(config.rseed)
-
+    torch.manual_seed(config.rseed)
 
     hidden_layer_size = []
     for i in range(config.num_hidden_layers):
         hidden_layer_size.append(config.hidden_layer_size)
+    
     model = MLP(num_hidden_layers=config.num_hidden_layers, hidden_layer_size=hidden_layer_size,
-        activation=config.activation, input_dim=config.input_dim, output_dim=config.output_dim)
+        activation=config.activation, input_dim=config.input_dim, output_dim=config.output_dim).to(device)
+    model.add_loss(bce_with_logits_loss(average='sum'))
     logging.info("Model has {} parameters.".format(model.num_parameters()))
 
     data_iterator = MNISTData(batch_size=config.batch_size, inference_batch_size=config.inference_batch_size,
         seed=config.data_iterator_seed, use_one_hot=config.use_one_hot)
-
     
     optimizer = get_optimizer(config)
     optimizer.register_model(model)
@@ -158,10 +160,9 @@ def create_experiment(config):
     training_statistics.updates_done = 0
     training_statistics.epochs_done = 0
 
-
     experiment.register_experiment(model, config, logger, training_statistics, data_iterator)
 
-    return experiment, model, data_iterator, training_statistics, logger
+    return experiment, model, data_iterator, training_statistics, logger, device
 
 
 def run_experiment(args):
@@ -170,12 +171,11 @@ def run_experiment(args):
     Args:
         args: command line arguments.
     """
-
     config = create_config(args.config, args.config_params)
 
     logging.info(config.get())
 
-    experiment, model, data_iterator, training_statistics, logger = create_experiment(config)
+    experiment, model, data_iterator, training_statistics, logger, device = create_experiment(config)
 
     if not args.force_restart:
         if experiment.is_resumable():
@@ -183,9 +183,8 @@ def run_experiment(args):
     else:
         experiment.force_restart()
 
-    train(experiment, model, config, data_iterator, training_statistics, logger)
+    train(experiment, model, config, data_iterator, training_statistics, logger, device)
     logging.info("Training done!")
-
 
 
 if __name__ == '__main__':

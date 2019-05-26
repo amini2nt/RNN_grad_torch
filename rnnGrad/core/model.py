@@ -195,3 +195,4 @@ class Model(object):
 			if len(layer._params) > 0:
 				for p in layer._params:
 					layer._params[p] = layer._params[p].to(device)
+		return self

@@ -152,8 +152,8 @@ class bce_with_logits_loss(object):
 		"""
 		self._pred[time] = pred
 		self._target[time] = target
-		loss = target * (torch.log(torch.exp(torch.zeros(1)) + torch.exp(-pred))) 
-		loss += (1-target) * (torch.log(torch.exp(torch.zeros(1)) + torch.exp(pred)))
+		loss = target * (torch.log(torch.exp(torch.zeros_like(pred)) + torch.exp(-pred))) 
+		loss += (1-target) * (torch.log(torch.exp(torch.zeros_like(pred)) + torch.exp(pred)))
 		if self._average == 'none':
 			self._output[time] = loss
 		elif self._average == 'sum':
