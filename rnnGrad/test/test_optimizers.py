@@ -72,7 +72,6 @@ class TestOptimizers(unittest.TestCase):
 			loss = torch_model.compute_loss(output, y)
 			loss.backward()
 			torch_optimizer.step()
-			#print(my_loss, loss)
 			self.assertTrue(l1_loss(loss, my_loss) < 1e-6)
 			self.assertTrue(l1_loss(output, my_output) < 1e-6)
 
@@ -137,10 +136,14 @@ class TestOptimizers(unittest.TestCase):
 
 		self._test_optimizer(my_model, torch_model, my_optimizer, torch_optimizer)
 
+	def test_ADAM(self):
 
-a = TestOptimizers()
-a.test_ADADELTA()
+		my_model = MLP()
+		my_optimizer = ADAM(learning_rate= 0.01, beta1 = 0.9, beta2 = 0.999, eps= 1.0e-8)
+		my_optimizer.register_model(my_model)
+		my_model.register_optimizer(my_optimizer)
 
+		torch_model = torch_MLP()
+		torch_optimizer = optim.Adam(torch_model.parameters(), lr=0.01, betas=(0.9, 0.999), eps=1.0e-8)
 
-
-
+		self._test_optimizer(my_model, torch_model, my_optimizer, torch_optimizer)
