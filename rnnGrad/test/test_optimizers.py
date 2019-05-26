@@ -72,7 +72,7 @@ class TestOptimizers(unittest.TestCase):
 			loss = torch_model.compute_loss(output, y)
 			loss.backward()
 			torch_optimizer.step()
-
+			#print(my_loss, loss)
 			self.assertTrue(l1_loss(loss, my_loss) < 1e-6)
 			self.assertTrue(l1_loss(output, my_output) < 1e-6)
 
@@ -125,7 +125,21 @@ class TestOptimizers(unittest.TestCase):
 
 		self._test_optimizer(my_model, torch_model, my_optimizer, torch_optimizer)
 
+	def test_ADADELTA(self):
 
+		my_model = MLP()
+		my_optimizer = ADADELTA(learning_rate=1.0, gamma=0.9, eps=1.0e-8)
+		my_optimizer.register_model(my_model)
+		my_model.register_optimizer(my_optimizer)
+
+		torch_model = torch_MLP()
+		torch_optimizer = optim.Adadelta(torch_model.parameters(), lr=1.0, rho=0.9, eps=1.0e-8)
+
+		self._test_optimizer(my_model, torch_model, my_optimizer, torch_optimizer)
+
+
+a = TestOptimizers()
+a.test_ADADELTA()
 
 
 
