@@ -4,7 +4,6 @@ import time
 import numpy as np
 import torch
 
-
 from myTorch.utils import MyContainer, create_config
 from rnnGrad.core.utils import get_optimizer
 from rnnGrad.core.losses import *
@@ -17,7 +16,6 @@ parser = argparse.ArgumentParser(description="MNIST Classification Task")
 parser.add_argument("--config", type=str, default="config/default.yaml", help="config file path.")
 parser.add_argument("--force_restart", type=bool, default=False, help="if True start training from scratch.")
 parser.add_argument('--config_params', type=str, default="default", help="config params to change")
-
 
 
 def compute_accuracy(model, data_iterator, data_tag, device):

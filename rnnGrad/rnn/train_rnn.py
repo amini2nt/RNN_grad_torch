@@ -1,26 +1,29 @@
-#!/usr/bin/env python
-import numpy
 import argparse
 import logging
-import ipdb
 import time
-from rnnGrad.core.optimizers import *
-from rnnGrad.core.utils import get_optimizer
+import numpy as np
+
 import torch
-from myTorch import Experiment
+
+from rnnGrad.core.utils import get_optimizer
+from rnnGrad.core.losses import *
 from rnn import Recurrent
+
 from myTorch.task.copy_task import CopyData
 from myTorch.task.repeat_copy_task import RepeatCopyData
 from myTorch.task.associative_recall_task import AssociativeRecallData
 from myTorch.task.copying_memory import CopyingMemoryData
 from myTorch.task.adding_task import AddingData
 from myTorch.task.denoising import DenoisingData
+
+from myTorch import Experiment
 from myTorch.utils.logger import Logger
 from myTorch.utils import MyContainer, create_config, one_hot
 
 parser = argparse.ArgumentParser(description="Algorithm Learning Task")
 parser.add_argument("--config", type=str, default="config/default_rnn.yaml", help="config file path.")
 parser.add_argument("--force_restart", type=bool, default=False, help="if True start training from scratch.")
+parser.add_argument('--config_params', type=str, default="default", help="config params to change")
 
 
 def get_data_iterator(config):
@@ -52,7 +55,7 @@ def get_data_iterator(config):
     return data_iterator
 
 
-def train(experiment, model, config, data_iterator, tr, logger):
+def train(experiment, model, config, data_iterator, tr, logger, device):
     """Training loop.
 
     Args:
@@ -62,6 +65,7 @@ def train(experiment, model, config, data_iterator, tr, logger):
         data_iterator: data iterator object
         tr: training statistics dictionary.
         logger: logger object.
+        device: torch device.
     """
 
     init_time = time.time()
@@ -72,7 +76,7 @@ def train(experiment, model, config, data_iterator, tr, logger):
                 experiment.save(str(tr.updates_done))
 
         data = data_iterator.next()
-        data['mask'] = torch.from_numpy(data['mask'])
+        data['mask'] = torch.from_numpy(data['mask']).to(device)
         seqloss = 0
 
         model.reset_hidden(batch_size=config.batch_size)
@@ -80,33 +84,30 @@ def train(experiment, model, config, data_iterator, tr, logger):
 
         numd = config.num_digits + config.num_noise_digits
 
-
         for i in range(0, data["datalen"]):
-            x = torch.from_numpy(data['x'][i])
-            y = torch.from_numpy(one_hot(data['y'][i], numd)).float()
+            x = torch.from_numpy(data['x'][i]).to(device)
+            y = torch.from_numpy(one_hot(data['y'][i], numd)).float().to(device)
             mask = data["mask"][i]
-
-
 
             output = model.forward(x, i+1)
 
             if mask == 1:
-                #if i == (data["datalen"]-1):
                 model.optimizer.zero_grad()
                 loss = model.compute_loss(output, y, i+1)
                 seqloss += loss
                 model.backward(i+1)
                 model.optimizer.update(i+1)
 
-        W_grad = np.linalg.norm(model._layer_list[0]._updates['W'].numpy())
-        W_grad_rel = W_grad/loss
-        logger.log_scalar("W_grad", W_grad, tr.updates_done)
-        logger.log_scalar("W_grad_rel", W_grad_rel, tr.updates_done)
+        if config.cell == "rnn":
+            W_grad = np.linalg.norm(model._layer_list[0]._updates['W'].numpy())
+            W_grad_rel = W_grad/loss
+            logger.log_scalar("W_grad", W_grad, tr.updates_done)
+            logger.log_scalar("W_grad_rel", W_grad_rel, tr.updates_done)
 
-        U_grad = np.linalg.norm(model._layer_list[0]._updates['U'].numpy())
-        U_grad_rel = U_grad/loss
-        logger.log_scalar("U_grad", U_grad, tr.updates_done)
-        logger.log_scalar("U_grad_rel", U_grad_rel, tr.updates_done)
+            U_grad = np.linalg.norm(model._layer_list[0]._updates['U'].numpy())
+            U_grad_rel = U_grad/loss
+            logger.log_scalar("U_grad", U_grad, tr.updates_done)
+            logger.log_scalar("U_grad_rel", U_grad_rel, tr.updates_done)
 
         seqloss /= sum(data["mask"])
         tr.average_bce.append(seqloss)
@@ -128,6 +129,9 @@ def train(experiment, model, config, data_iterator, tr, logger):
 def create_experiment(config):
     """Creates an experiment based on config."""
 
+    device = torch.device(config.device)
+    logging.info("using {}".format(config.device))
+
     experiment = Experiment(config.name, config.save_dir)
 
     logger = None
@@ -136,10 +140,13 @@ def create_experiment(config):
 
     np.random.seed(config.rseed)
     torch.manual_seed(config.rseed)
+
     input_size = config.num_digits + config.num_noise_digits + 1
     output_size = input_size - 1
 
-    model = Recurrent(input_size, output_size, config.hidden_size)
+    model = Recurrent(input_size, output_size, config.hidden_size, config.cell,
+        config.activation, config.chrono_init, config.t_max).to(device)
+    model.add_loss(bce_with_logits_loss(average='mean'))
 
     data_iterator = get_data_iterator(config)
 
@@ -154,16 +161,21 @@ def create_experiment(config):
     experiment.register_experiment(model=model, config=config, logger=logger, train_statistics=tr,
         data_iterator=data_iterator)
 
-    return experiment, model, data_iterator, tr, logger
+    return experiment, model, data_iterator, tr, logger, device
 
 
 def run_experiment(args):
-    """Runs the experiment."""
+    """Runs the experiment.
 
-    config = create_config(args.config)
+
+    Args:
+        args: command line arguments.
+    """
+    config = create_config(args.config, args.config_params)
 
     logging.info(config.get())
-    experiment, model, data_iterator, tr, logger = create_experiment(config)
+
+    experiment, model, data_iterator, tr, logger, device = create_experiment(config)
 
     if not args.force_restart:
         if experiment.is_resumable():
@@ -171,11 +183,10 @@ def run_experiment(args):
     else:
         experiment.force_restart()
 
-    train(experiment, model, config, data_iterator, tr, logger)
+    train(experiment, model, config, data_iterator, tr, logger, device)
 
 
 if __name__ == '__main__':
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
-
     run_experiment(args)

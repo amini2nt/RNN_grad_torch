@@ -28,7 +28,6 @@ class MLP(Model):
 
 	def create_network(self):
 		"""Creates the network."""
-
 		self.append(linear(self._input_dim, self._hidden_layer_size[0]))
 		self.append(get_activation(self._activation))
 		for i in range(1, self._num_hidden_layers):
