@@ -352,13 +352,71 @@ class ADAM(Optimizer):
 						layer._params[param] = layer._params[param] + layer._updates[param]
 
 
-########################### Weight sharing
+#############################
+# Weight sharing aware optimizers.
+#############################
 
-class torch_WA_RMSprop(Optimizer):
-	"""Implementation of RMSprop update rule with weight sharing awareness."""
+class WA_ADAGRAD(Optimizer):
+	"""Implementation of WA_ADAGRAD update rule."""
+
+	def __init__(self, learning_rate=0.01, eps=1.0e-8):
+		"""Initialize an WA_ADAGRAD optimizer.
+
+		Args:
+			learning_rate: float, learning rate.
+			eps: float, term added for numerical stability.
+		"""
+		super().__init__(learning_rate)		
+		self._eps = eps
+
+	def register_model(self, model):
+		"""register a model to the optimizer.
+		
+		Args:
+			model: a model object.
+		"""	
+		self._model = model
+		self._params = {}
+		self._params["sqrs"] = {}
+		for i in range(0, len(self._model._layer_list)):
+			layer = self._model._layer_list[i]
+			self._params["sqrs"][i] = {}
+			if len(layer._params) > 0:
+				for p in layer._params.keys():
+					self._params["sqrs"][i][p] = torch.zeros_like(layer._params[p])
+
+	def update(self, time=1):
+		"""Updates the network parameters using the gradients.
+
+		Args:
+			time: int, time step.
+		"""
+		for i in range(0, len(self._model._layer_list)):
+			layer = self._model._layer_list[i]
+			if len(layer._params) > 0:
+				if layer.is_time_shared():
+					for param in layer._params.keys():
+						layer._updates[param] = torch.zeros_like(layer._params[param])
+						for t in layer._grads.keys():
+							if t <= time:	
+								grad = layer._grads[t][param] 
+								self._params["sqrs"][i][param] += ( grad ** 2) 
+								layer._updates[param] += -(self._lr * grad / (torch.sqrt(self._params["sqrs"][i][param] ) + self._eps ))
+						layer._params[param] = layer._params[param] + layer._updates[param]
+					
+				else:
+					for param in layer._params.keys():
+						grad = layer._grads[time][param]
+						self._params["sqrs"][i][param] += ( grad ** 2) 
+						layer._updates[param] = -(self._lr * grad / (torch.sqrt(self._params["sqrs"][i][param]) + self._eps))
+						layer._params[param] = layer._params[param] + layer._updates[param]		
+
+
+class WA_RMSprop(Optimizer):
+	"""Implementation of WA_RMSprop update rule."""
 
 	def __init__(self, learning_rate=0.01, alpha=0.99, eps=1.0e-8):
-		"""Initialize an RMSprop optimizer.
+		"""Initialize an WA_RMSprop optimizer.
 
 		Args:
 			learning_rate: float, learning rate.
@@ -391,11 +449,10 @@ class torch_WA_RMSprop(Optimizer):
 		Args:
 			time: int, time step
 		"""
-
 		for i in range(0, len(self._model._layer_list)):
 			layer = self._model._layer_list[i]
 			if len(layer._params) > 0:
-				if layer.is_recurrent():
+				if layer.is_time_shared():
 					for param in layer._params.keys():
 						layer._updates[param] = torch.zeros_like(layer._params[param])
 						for t in layer._grads.keys():
@@ -412,152 +469,18 @@ class torch_WA_RMSprop(Optimizer):
 						layer._params[param] = layer._params[param] + layer._updates[param]
 
 
+class WA_ADADELTA(Optimizer):
+	"""Implementation of WA_ADADELTA update rule."""
 
-class torch_WA_ADAM(Optimizer):
-	"""Implementation of ADAM update rule with weight sharing."""
-
-	def __init__(self, learning_rate= 0.01, beta1 = 0.9, beta2 = 0.999, eps= 1.0e-8):
-		"""Initialize an ADAM optimizer
-
-		Args:
-			learning_rate: float, learning rate.
-			beta1: float, decay rate
-			beta2: float, decay rate
-			eps: float, term added for numerical stability.
-		"""
-		super().__init__(learning_rate)
-		self._beta1 = beta1
-		self._beta2 = beta2
-		self._eps = eps
-
-
-	def register_model(self, model):
-		"""register a model to the optimizer.
-		
-		Args:
-			model: a model object.
-		"""
-		
-		self._model = model
-		self._params = {}
-		self._params["t"] = 0
-		self._params["m"] = {}
-		self._params["v"] = {}
-		for i in range(0, len(self._model._layer_list)):
-			layer = self._model._layer_list[i]
-			self._params["m"][i] = {}
-			self._params["v"][i] = {}
-			if len(layer._params) > 0:
-				if layer.is_recurrent():
-					for p in layer._params.keys():
-						self._params["v"][i][p] = {}
-						self._params["m"][i][p] = {}
-						for t in range(0, self._max_steps):
-							self._params["v"][i][p][t] = torch.zeros_like(layer._params[p])
-							self._params["m"][i][p][t] = torch.zeros_like(layer._params[p])
-
-				else:
-					for p in layer._params.keys():
-						self._params["v"][i][p] = torch.zeros_like(layer._params[p])
-						self._params["m"][i][p] = torch.zeros_like(layer._params[p])
-
-					
-	def update(self, time=1):
-		"""Updates the network parameters using the gradients."""
-		self._params["t"] += 1
-		for i in range(0, len(self._model._layer_list)):
-			layer = self._model._layer_list[i]
-			if len(layer._params) > 0:
-				if layer.is_recurrent():
-					for param in layer._params.keys():
-						layer._updates[param] = torch.zeros_like(layer._params[param])
-						for t in layer._grads.keys():
-							if t <= time:
-								grad += layer._grads[t][param]
-						
-								self._params["m"][i][param] = self._beta1 * self._params["m"][i][param] + (1 - self._beta1) * (grad)					
-								self._params["v"][i][param] = self._beta2 * self._params["v"][i][param] + (1 - self._beta2) * (grad **2)
-								m_corrected = self._params["m"][i][param] / (1. - self._beta1**self._params["t"])
-								v_corrected = self._params["v"][i][param] / (1. - self._beta2**self._params["t"])		
-								layer._updates[param] += - (self._lr * m_corrected / (torch.sqrt(v_corrected) + self._eps))
-						layer._params[param] = layer._params[param] + layer._updates[param]
-				else:
-					for param in layer._params.keys():
-						grad = layer._grads[time][param]
-						self._params["m"][i][param] = self._beta1 * self._params["m"][i][param] + (1 - self._beta1) * (grad)					
-						self._params["v"][i][param] = self._beta2 * self._params["v"][i][param] + (1 - self._beta2) * (grad **2)
-						m_corrected = self._params["m"][i][param] / (1. - self._beta1**self._params["t"])
-						v_corrected = self._params["v"][i][param] / (1. - self._beta2**self._params["t"])		
-						layer._updates[param] = - (self._lr * m_corrected / (torch.sqrt(v_corrected) + self._eps))
-						layer._params[param] = layer._params[param] + layer._updates[param]
-
-
-class torch_WA_ADAGRAD(Optimizer):
-	"""Implementation of ADAGRAD update rule"""
-
-	def __init__(self, learning_rate=0.01, eps=1.0e-8):
-		"""Initialize an ADAGRAD optimizer
+	def __init__(self, learning_rate=1.0 , gamma=0.9, eps=1.0e-8):
+		"""Initialize an WA_ADADELTA optimizer.
 
 		Args:
 			learning_rate: float, learning rate.
+			gamma: float, smoothing constant.
 			eps: float, term added for numerical stability.
 		"""
-		super().__init__(learning_rate)
-		
-		self._eps = eps
-
-	def register_model(self, model):
-		"""register a model to the optimizer.
-		
-		Args:
-			model: a model object.
-		"""	
-		self._model = model
-		self._params = {}
-		self._params["sqrs"] = {}
-		for i in range(0, len(self._model._layer_list)):
-			layer = self._model._layer_list[i]
-			self._params["sqrs"][i] = {}
-			if len(layer._params) > 0:
-				for p in layer._params.keys():
-					self._params["sqrs"][i][p] = torch.zeros_like(layer._params[p])
-
-	def update(self, time=1):
-		"""Updates the network parameters using the gradients."""
-		for i in range(0, len(self._model._layer_list)):
-			layer = self._model._layer_list[i]
-			if len(layer._params) > 0:
-				if layer.is_recurrent():
-					for param in layer._params.keys():
-						layer._updates[param] = torch.zeros_like(layer._params[param])
-						for t in layer._grads.keys():
-							if t <= time:
-								grad = layer._grads[t][param] 
-								self._params["sqrs"][i][param] += ( grad ** 2) 
-								layer._updates[param] += -(self._lr * grad / (torch.sqrt(self._params["sqrs"][i][param] ) + self._eps ))
-						layer._params[param] = layer._params[param] + layer._updates[param]
-					
-				else:
-					for param in layer._params.keys():
-						grad = layer._grads[time][param]
-						self._params["sqrs"][i][param] += ( grad ** 2) 
-						layer._updates[param] = -(self._lr * grad / (torch.sqrt(self._params["sqrs"][i][param]) + self._eps))
-						layer._params[param] = layer._params[param] + layer._updates[param]		
-
-
-class torch_WA_ADADELTA(Optimizer):
-	"""Implementation of SGD update rule"""
-
-	def __init__(self, learning_rate=0.1 , gamma=0.9, eps=1.0e-8):
-		"""Initialize an SGD optimizer
-
-		Args:
-			learning_rate: float, learning rate.
-			alpha: float, smoothing constant.
-			eps: float, term added for numerical stability.
-		"""
-		super().__init__(learning_rate)
-		
+		super().__init__(learning_rate)		
 		self._eps = eps
 		self._gamma = gamma
 
@@ -582,7 +505,77 @@ class torch_WA_ADADELTA(Optimizer):
 
 				
 	def update(self, time=1):
+		"""Updates the network parameters using the gradients.
+
+		Args:
+			time: int, time step
+		"""
+		for i in range(0, len(self._model._layer_list)):
+			layer = self._model._layer_list[i]
+			if len(layer._params) > 0:
+				if layer.is_time_shared():
+					for param in layer._params.keys():
+						layer._updates[param] = torch.zeros_like(layer._params[param])
+						for t in layer._grads.keys():
+							if t <= time:
+								grad = layer._grads[t][param]
+								self._params["sqr"][i][param] = self._gamma * self._params["sqr"][i][param] + (1 - self._gamma) * (grad**2)
+								update = - (torch.sqrt(self._params["delta"][i][param] + self._eps) / torch.sqrt(self._params["sqr"][i][param] + self._eps) ) * grad
+								self._params["delta"][i][param] = self._gamma * self._params["delta"][i][param] + (1 - self._gamma) * update * update
+								layer._updates[param] += self._lr * update
+						layer._params[param] = layer._params[param] + layer._updates[param]
+
+				else:
+					for param in layer._params.keys():
+						grad = layer._grads[time][param]
+						self._params["sqr"][i][param] = self._gamma * self._params["sqr"][i][param] + (1 - self._gamma) * (grad**2)
+						layer._updates[param] = - (torch.sqrt(self._params["delta"][i][param] + self._eps) / torch.sqrt(self._params["sqr"][i][param] + self._eps) ) * grad
+						self._params["delta"][i][param] = self._gamma * self._params["delta"][i][param] + (1 - self._gamma) * layer._updates[param] * layer._updates[param]
+						layer._updates[param] = self._lr * layer._updates[param]
+						layer._params[param] = layer._params[param] + layer._updates[param]
+
+
+class WA_ADAM(Optimizer):
+	"""Implementation of WA_ADAM update rule."""
+
+	def __init__(self, learning_rate= 0.01, beta1 = 0.9, beta2 = 0.999, eps= 1.0e-8):
+		"""Initialize an WA_ADAM optimizer.
+
+		Args:
+			learning_rate: float, learning rate.
+			beta1: float, decay rate
+			beta2: float, decay rate
+			eps: float, term added for numerical stability.
+		"""
+		super().__init__(learning_rate)
+		self._beta1 = beta1
+		self._beta2 = beta2
+		self._eps = eps
+
+
+	def register_model(self, model):
+		"""register a model to the optimizer.
+		
+		Args:
+			model: a model object.
+		"""
+		self._model = model
+		self._params = {}
+		self._params["t"] = 0
+		self._params["m"] = {}
+		self._params["v"] = {}
+		for i in range(0, len(self._model._layer_list)):
+			layer = self._model._layer_list[i]
+			self._params["m"][i] = {}
+			self._params["v"][i] = {}
+			if len(layer._params) > 0:
+				for p in layer._params.keys():
+					self._params["v"][i][p] = torch.zeros_like(layer._params[p])
+					self._params["m"][i][p] = torch.zeros_like(layer._params[p])
+				
+	def update(self, time=1):
 		"""Updates the network parameters using the gradients."""
+		self._params["t"] += 1
 		for i in range(0, len(self._model._layer_list)):
 			layer = self._model._layer_list[i]
 			if len(layer._params) > 0:
@@ -592,22 +585,31 @@ class torch_WA_ADADELTA(Optimizer):
 						for t in layer._grads.keys():
 							if t <= time:
 								grad = layer._grads[t][param]
-
-								self._params["sqr"][i][param] = self._gamma * self._params["sqr"][i][param] + (1 - self._gamma) * (grad**2)
-								layer._updates[param] += -(torch.sqrt(self._params["delta"][i][param] + self._eps) / torch.sqrt(self._params["sqr"][i][param] + self._eps) ) * grad
-								self._params["delta"][i][param] = self._gamma * self._params["delta"][i][param] + (1 - self._gamma) * layer._updates[param] * layer._updates[param]
+						
+								self._params["m"][i][param] = self._beta1 * self._params["m"][i][param] + (1 - self._beta1) * (grad)					
+								self._params["v"][i][param] = self._beta2 * self._params["v"][i][param] + (1 - self._beta2) * (grad **2)
+								bias_correction1 = 1. - self._beta1**self._params["t"]
+								bias_correction2 = 1. - self._beta2**self._params["t"]
+								step_size = self._lr * math.sqrt(bias_correction2) / bias_correction1
+								layer._updates[param] += - (step_size * self._params["m"][i][param] / (torch.sqrt(self._params["v"][i][param]) + self._eps))
 						layer._params[param] = layer._params[param] + layer._updates[param]
-
 				else:
 					for param in layer._params.keys():
 						grad = layer._grads[time][param]
-						self._params["sqr"][i][param] = self._gamma * self._params["sqr"][i][param] + (1 - self._gamma) * (grad**2)
-						layer._updates[param] = -(torch.sqrt(self._params["delta"][i][param] + self._eps) / torch.sqrt(self._params["sqr"][i][param] + self._eps) ) * grad
-						self._params["delta"][i][param] = self._gamma * self._params["delta"][i][param] + (1 - self._gamma) * layer._updates[param] * layer._updates[param]
+						self._params["m"][i][param] = self._beta1 * self._params["m"][i][param] + (1 - self._beta1) * (grad)					
+						self._params["v"][i][param] = self._beta2 * self._params["v"][i][param] + (1 - self._beta2) * (grad **2)
+						bias_correction1 = 1. - self._beta1**self._params["t"]
+						bias_correction2 = 1. - self._beta2**self._params["t"]
+						step_size = self._lr * math.sqrt(bias_correction2) / bias_correction1
+						layer._updates[param] = - (step_size * self._params["m"][i][param] / (torch.sqrt(self._params["v"][i][param]) + self._eps))
 						layer._params[param] = layer._params[param] + layer._updates[param]
 
 
+#############################
+# Time aware optimizers.
+#############################
 
+# Not yet cleaned.
 
 class TA_RMSprop(Optimizer):
 	"""Implementation of time-aware RMSprop update rule"""
