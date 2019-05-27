@@ -1,22 +1,21 @@
 config_filename: "default_rnn.yaml"
-description: "copying memory task"
+description: "pmnist task"
 
 project_name: "pmnist_wa"
 ex_name: "rmsprop_rnn_trial"
 
 # model specific details
-
 hidden_size: 100
 input_size: 1
 output_size: 10
+cell: "janet"
+activation: "tanh"
 chrono_init: False
 t_max: 785
 
 
 # optimization specific details
-
-# Valid optimizer names: Adadelta, Adagrad, Adam, RMSprop, TA_RMSprop, SGD
-optim_name: "torch_RMSprop"
+optim_name: "RMSprop"
 lr: 1.0e-3
 momentum: 0
 alpha: 0.99
@@ -24,19 +23,16 @@ eps: 1.0e-8
 beta1: 0.9
 beta2: 0.999
 max_steps: 100
-beta1: 0.9
-beta2: 0.999
 gamma: 0.9
 
 max_steps: 50000
 rseed:  5
-device: 'cuda'
+device: 'cuda:0'
 
 # task specific details
 task: "pmnist"
 batch_size: 100
 seed: 5
-
 
 # saving details
 use_tflogger: True

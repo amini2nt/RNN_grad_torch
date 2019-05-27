@@ -127,8 +127,14 @@ def train(experiment, model, config, data_iterator, tr, logger, device):
 
 
 def create_experiment(config):
-    """Creates an experiment based on config."""
+    """Creates an experiment based on config.
 
+    Args:
+        config: config dictionary.
+
+    returns:
+        experiment, model, data_iterator, training_statitics, logger, device
+    """
     device = torch.device(config.device)
     logging.info("using {}".format(config.device))
 
