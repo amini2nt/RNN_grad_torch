@@ -120,7 +120,7 @@ def train(experiment, model, config, data_iterator, tr, logger, device):
                     model.optimizers[i].update(i + 1)
 
         for i in range(0, len(losses)):
-            logger.log_scalar("Loss_at_time_" + str(i + 1), loss[i]/seqloss, tr.updates_done)
+            logger.log_scalar("Loss_at_time_" + str(i + 1), losses[i]/seqloss, tr.updates_done)
 
         if config.cell == "rnn":
             W_grad = np.linalg.norm(model._layer_list[0]._updates['W'].numpy())
