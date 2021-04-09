@@ -1,15 +1,15 @@
 config_filename: "default_rnn.yaml"
-description: "copying memory task"
+description: "reverse copying memory task"
 
-project_name: "copy_mem"
-ex_name: "rmsprop_janet"
+project_name: "reverse_copy_mem"
+ex_name: "rmsprop_rnn_fixed_batch_long"
 
 # model specific details
 cell: "rnn"
 activation: "tanh"
 chrono_init: False
 t_max: 10
-hidden_size: 100
+hidden_size: 128
 
 
 # optimization specific details
@@ -22,21 +22,26 @@ beta1: 0.9
 beta2: 0.999
 gamma: 0.9
 
-max_steps: 200000
+max_steps: 1000
 rseed:  5
 device: 'cpu'
+separate_optimizers: False
 
 # task specific details
-task: "copying_memory"
-batch_size: 10
+task: "reverse_copying_memory"
+batch_size: 1
 seed: 5
-time_lag_min: 5
-time_lag_max: 5
-seq_len: 2
+time_lag_min: 10
+time_lag_max: 10
+seq_len: 5
 num_noise_digits: 1
 num_digits: 8
+#num_bits: 4
+#max_len: 5
+#min_len: 1
 
 # saving details
-use_tflogger: True
+use_logger: True
+use_time_logger: True
 save_every_n: 10000000
 inter_saving: False

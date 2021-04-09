@@ -2,8 +2,8 @@ import unittest
 import torch
 
 from rnnGrad.core.layers import *
-from myTorch.memory import RNNCell as TorchRNN
-from myTorch.memory import JANETCell as TorchJANET
+from rnnGrad.myTorch.memory import RNNCell as TorchRNN
+from rnnGrad.myTorch.memory import JANETCell as TorchJANET
 
 class TestLayers(unittest.TestCase):
 

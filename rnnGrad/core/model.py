@@ -145,6 +145,15 @@ class Model(object):
 
 		self.optimizer = optimizer
 
+	def register_optimizers(self, optimizers):
+		"""Registers an optimizer for the model.
+
+		Args:
+			optimizer: optimizer object.
+		"""
+
+		self.optimizers = optimizers
+
 	def save(self, dir_name):
 		"""Saves the model parameters.
 
