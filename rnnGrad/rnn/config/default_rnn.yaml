@@ -2,7 +2,7 @@ config_filename: "default_rnn.yaml"
 description: "reverse copying memory task"
 
 project_name: "reverse_copy_mem"
-ex_name: "rmsprop_rnn_fixed_batch_long"
+ex_name: "rmsprop_rnn_fixed_batch_normalized"
 
 # model specific details
 cell: "rnn"
@@ -29,10 +29,10 @@ separate_optimizers: False
 
 # task specific details
 task: "reverse_copying_memory"
-batch_size: 1
+batch_size: 10
 seed: 5
-time_lag_min: 10
-time_lag_max: 10
+time_lag_min: 1
+time_lag_max: 1
 seq_len: 5
 num_noise_digits: 1
 num_digits: 8

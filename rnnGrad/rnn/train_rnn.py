@@ -88,6 +88,7 @@ def train(experiment, model, config, data_iterator, tr, logger, device):
         #data = data_iterator.next()
         #data['mask'] = torch.from_numpy(data['mask']).to(device)
         seqloss = 0
+        losses = []
 
         model.reset_hidden(batch_size=config.batch_size)
         model.reset()
@@ -109,7 +110,7 @@ def train(experiment, model, config, data_iterator, tr, logger, device):
                         optimizer.zero_grad()
                 loss = model.compute_loss(output, y, i + 1)
                 if config.use_time_logger:
-                    logger.log_scalar("Loss_at_time_" + str(i+1), loss, tr.updates_done)
+                    losses.append(loss)
                 seqloss += loss
                 model.backward(i + 1)
                 if not config.separate_optimizers:
@@ -117,6 +118,9 @@ def train(experiment, model, config, data_iterator, tr, logger, device):
                     #print(model.optimizer._params["g2"])
                 else:
                     model.optimizers[i].update(i + 1)
+
+        for i in range(0, len(losses)):
+            logger.log_scalar("Loss_at_time_" + str(i + 1), loss[i]/seqloss, tr.updates_done)
 
         if config.cell == "rnn":
             W_grad = np.linalg.norm(model._layer_list[0]._updates['W'].numpy())
